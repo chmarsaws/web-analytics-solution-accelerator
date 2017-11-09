@@ -1,43 +1,278 @@
 {
   "AWSTemplateFormatVersion": "2010-09-09",
   "Parameters" : {
+    "Username": {
+      "Description": "The username of the user you want to create in Amazon Cognito.",
+      "Type": "String",
+      "AllowedPattern": "^(?=\\s*\\S).*$",
+      "ConstraintDescription": " cannot be empty"
+    },
+    "Password": {
+      "Description": "The password of the user you want to create in Amazon Cognito.",
+      "Type": "String",
+      "NoEcho": true,
+      "AllowedPattern": "^(?=.*[A-Za-z])(?=.*\\d)[A-Za-z\\d]{6,}$",
+      "ConstraintDescription": " must be at least 6 alpha-numeric characters, and contain at least one number"
+    },
     "VPC" : {
       "Type" : "AWS::EC2::VPC::Id",
       "Default" : "vpc-4856662d",
       "Description" : "Pick a VPC with subnets that automatically assign external IP addresses like the default VPC."
     },
-    "Image" : {
-      "Type" : "AWS::EC2::Image::Id",
-      "Default" : "ami-8c1be5f6",
-      "Description" : "Amazon Linux AMI for your regin.  Defaults to us-east-1 AMI."
+    "Subnet" : {
+      "Type" : "AWS::EC2::Subnet::Id",
+      "Description" : "Subnet Id for a Public subnet in the selected VPC for the beacon web server."
     },
     "key" : {
       "Type" : "AWS::EC2::KeyPair::KeyName",
       "Description" : "Keypair name for instance"
     },
-    "ShardCount" : { 
-      "Type" : "Number",
-      "Description" : "Number of shards for streams",
-      "Default" : "1"
-    },
-    "CreateBucket" : { 
+    "Bucket" : {
       "Type" : "String",
-      "Description" : "Create new bucket ( 'Y' or 'N' )",
-      "ConstraintDescription" : "Please enter Y to create a bucket or N if the bucket alreay exists",
-      "AllowedValues" : [ "Y" , "N" ],
-      "Default" : "Y"
-    },
-    "BucketArn" : {
-      "Type" : "String",
-      "Description" : "S3 Bucket Arn", 
-      "Default" : "arn:aws:s3:::chmars-data-us-east-1"
-    },
+      "Description" : "S3 Bucket name in this region used to store web analytics traffic."    },
     "BucketPrefix" : {
       "Type" : "String",
-      "Description" : "S3 Bucket prefix"
+      "Description" : "S3 Bucket prefix used to store analytics traffic."
+    }
+  },
+  "Metadata": {
+    "AWS::CloudFormation::Interface": {
+      "ParameterGroups": [
+        {
+          "Label": {
+            "default": "Cognito User for Access to the Dashboard"
+          },
+          "Parameters": [
+            "Username",
+            "Password"
+          ]
+        },
+        {
+          "Label": {
+            "default": "Parameters for web server that collects beacon traffic."
+          },
+          "Parameters": [
+            "VPC",
+            "Subnet",
+            "key"
+          ]
+        },
+        {
+          "Label": {
+            "default": "Location for Kiesis Firehose to store incoming analytics beacon traffic."
+          },
+          "Parameters": [
+            "Bucket",
+            "BucketPrefix"
+          ]
+        }
+      ]
+    }
+  },
+  "Mappings" : {
+    "RegionMap" : {
+      "us-east-1"      : { "m4xlarge" : "ami-6057e21a"},
+      "us-east-2"      : { "m4xlarge" : "ami-aa1b34cf"},
+      "us-west-1"      : { "m4xlarge" : "ami-1a033c7a"},
+      "us-west-2"      : { "m4xlarge" : "ami-32d8124a"},
+      "ca-central-1"      : { "m4xlarge" : "ami-ef3b838b"},
+      "eu-west-1"      : { "m4xlarge" : "ami-760aaa0f"},
+      "eu-central-1"      : { "m4xlarge" : "ami-e28d098d"},
+      "ap-southeast-1"      : { "m4xlarge" : "ami-dd7935be"},
+      "ap-southeast-2"      : { "m4xlarge" : "ami-1a668878"},
+      "ap-northeast-2"      : { "m4xlarge" : "ami-fc862292"},
+      "ap-northeast-1"      : { "m4xlarge" : "ami-2803ac4e"},
+      "ap-south-1"      : { "m4xlarge" : "ami-2ed19c41"},
+      "sa-east-1"      : { "m4xlarge" : "ami-1678037a"}
     }
   },
   "Resources": {
+    "CognitoSetupLambdaFunc" : {
+      "Type" : "AWS::Lambda::Function",
+      "Properties" : {
+        "Code": {
+          "S3Bucket" : { "Fn::Sub" : "chmars-data-${AWS::Region}" } ,
+          "S3Key": "code/cognito-setup.zip"
+        },
+        "Description": "Creates a Cognito User Pool, Identity Pool, and a User.  Returns IDs to be used in the Kinesis Web Analytics Accelerator.",
+        "FunctionName": "SolutionAcceleratorCognitoSetup",
+        "Handler": "createCognitoPool.createPoolAndUser",
+        "Role": { "Fn::GetAtt" : ["CognitoLambdaExecutionRole", "Arn"] },
+        "Runtime": "nodejs4.3",
+        "Timeout": 60
+      }
+    },    
+    "CognitoLambdaExecutionRole": {
+      "Type": "AWS::IAM::Role",
+      "Properties": {
+        "AssumeRolePolicyDocument": {
+          "Version": "2012-10-17",
+          "Statement": [{ "Effect": "Allow", "Principal": {"Service": ["lambda.amazonaws.com"]}, "Action": ["sts:AssumeRole"] }]
+        },
+        "Path": "/",
+        "Policies": [{
+          "PolicyName": "root",
+          "PolicyDocument": {
+            "Version": "2012-10-17",
+            "Statement": [
+              {
+                "Effect": "Allow",
+                "Action": ["logs:*"],
+                "Resource": "arn:aws:logs:*:*:*" },
+              {
+                "Effect": "Allow",
+                "Action": [
+                  "cognito-idp:AdminConfirmSignUp",
+                  "cognito-idp:CreateUserPoolClient",
+                  "cognito-idp:AdminCreateUser"
+                ],
+                "Resource": [
+                  "arn:aws:cognito-idp:*:*:userpool/*"
+                ]
+              },
+              {
+                "Effect": "Allow",
+                "Action": [
+                  "cognito-idp:CreateUserPool",
+                  "cognito-identity:*"
+                ],
+                "Resource": "*" },
+              {
+                "Effect": "Allow",
+                "Action": ["iam:UpdateAssumeRolePolicy"],
+                "Resource": [
+                  {"Fn::GetAtt" : ["AuthenticatedUserRole", "Arn"] },
+                  {"Fn::GetAtt" : ["UnauthenticatedUserRole", "Arn"] }
+                ]
+              },
+              {
+                "Effect": "Allow",
+                "Action": ["iam:PassRole"],
+                "Resource": [
+                  {"Fn::GetAtt" : ["AuthenticatedUserRole", "Arn"] },
+                  {"Fn::GetAtt" : ["UnauthenticatedUserRole", "Arn"] }
+                ]
+              }
+            ]
+          }
+        }]
+      }
+    },
+    "SetupCognitoCustom" : {
+      "Type": "Custom::CognitoSetupLambdaFunc",
+      "Properties": {
+        "ServiceToken": { "Fn::GetAtt" : ["CognitoSetupLambdaFunc", "Arn"] },
+        "Region": {"Ref": "AWS::Region"},
+        "Username": {"Ref": "Username"},
+        "Password": {"Ref": "Password"},
+        "AuthRoleName": {"Ref": "AuthenticatedUserRole"},
+        "UnauthRoleName": {"Ref": "UnauthenticatedUserRole"},
+        "AuthRoleArn": { "Fn::GetAtt" : ["AuthenticatedUserRole", "Arn"] },
+        "UnauthRoleArn": { "Fn::GetAtt" : ["UnauthenticatedUserRole", "Arn"] },
+        "PoolName" : { "Fn::Sub" : "${AWS::StackName}-User Pool" },
+        "ClientName" : { "Fn::Sub" : "${AWS::StackName}-Solution Accelerator Dashboard" }
+      }
+    },
+    "AuthenticatedUserRole": {
+      "Type": "AWS::IAM::Role",
+      "Properties": {
+        "AssumeRolePolicyDocument": {
+          "Version": "2012-10-17",
+          "Statement": [{ "Effect": "Allow", "Principal": {"Federated": ["cognito-identity.amazonaws.com"]}, "Action": ["sts:AssumeRoleWithWebIdentity"] }]
+        },
+        "Path": "/",
+        "Policies": [{
+          "PolicyName": "root",
+          "PolicyDocument": {
+            "Version": "2012-10-17",
+            "Statement": [
+              {
+                "Action": [
+                  "kinesis:DescribeStream",
+                  "kinesis:PutRecord",
+                  "kinesis:PutRecords"
+                ],
+                "Resource": [
+                  "arn:aws:kinesis:*:*:stream/*"
+                ],
+                "Effect": "Allow"
+              },
+              {
+                "Action": [
+                  "firehose:DescribeDeliveryStream",
+                  "firehose:PutRecord",
+                  "firehose:PutRecordBatch"
+                ],
+                "Resource": [
+                  "arn:aws:firehose:*:*:deliverystream/*"
+                ],
+                "Effect": "Allow"
+              },
+              {
+                "Action": [
+                  "mobileanalytics:PutEvents",
+                  "cognito-sync:*",
+                  "cognito-identity:*",
+                  "ec2:DescribeRegions",
+                  "firehose:ListDeliveryStreams",
+                  "kinesis:ListStreams"
+                ],
+                "Resource": [
+                  "*"
+                ],
+                "Effect": "Allow"
+              },
+              {
+                "Effect": "Allow",
+                "Action": [
+                  "dynamodb:Scan"
+                ],
+                "Resource": [
+                  {"Fn::GetAtt" : ["MetricTable", "Arn"] }
+                ]
+              },
+              {
+                "Effect": "Allow",
+                "Action": [
+                  "dynamodb:Query"
+                ],
+                "Resource": [
+                  {"Fn::GetAtt" : ["MetricDetailsTable", "Arn"] }
+                ]
+              }
+            ]
+          }
+        }]
+      }
+    },
+    "UnauthenticatedUserRole": {
+      "Type": "AWS::IAM::Role",
+      "Properties": {
+        "AssumeRolePolicyDocument": {
+          "Version": "2012-10-17",
+          "Statement": [{ "Effect": "Allow", "Principal": {"Federated": ["cognito-identity.amazonaws.com"]}, "Action": ["sts:AssumeRoleWithWebIdentity"] }]
+        },
+        "Path": "/",
+        "Policies": [{
+          "PolicyName": "root",
+          "PolicyDocument": {
+            "Version": "2012-10-17",
+            "Statement": [
+              {
+                "Effect": "Allow",
+                "Action": [
+                  "mobileanalytics:PutEvents",
+                  "cognito-sync:*"
+                ],
+                "Resource": [
+                  "*"
+                ]
+              }   
+            ]
+          }
+        }]
+      }
+    },  
     "WebServer": {
       "Type": "AWS::EC2::Instance",
       "Metadata": {
@@ -151,7 +386,7 @@
         }
       },
       "Properties": {
-        "ImageId": {"Ref" : "Image"},
+        "ImageId": { "Fn::FindInMap" : [ "RegionMap", { "Ref" : "AWS::Region" }, "m4xlarge"]},
         "InstanceType": "m4.xlarge",
         "KeyName": {"Ref" : "key"},
         "IamInstanceProfile": {"Ref" : "KinesisInstanceProfile"},
@@ -166,9 +401,6 @@
               "\n"]]
           }
         },
-        "SecurityGroupIds" : [
-          {"Fn::GetAtt" : [ "sgWebServerNonSSL", "GroupId" ]}
-        ],
         "BlockDeviceMappings": [
           {
             "DeviceName": "/dev/xvda",
@@ -176,10 +408,18 @@
               "VolumeSize": 8
             }
           }
-        ]
+        ],
+        "NetworkInterfaces" : [{
+          "AssociatePublicIpAddress" : true,
+          "DeleteOnTermination" : true,
+          "Description" : "Public interface",
+          "DeviceIndex" : "0",
+          "GroupSet" : [ {"Fn::GetAtt" : [ "WebServerNonSSLSecurityGroup", "GroupId" ]} ],
+          "SubnetId" : {"Ref" : "Subnet"}
+        }]
       }
     },
-    "sgWebServerNonSSL": {
+    "WebServerNonSSLSecurityGroup": {
       "Type": "AWS::EC2::SecurityGroup",
       "Properties": {
         "GroupDescription": "Admin port and web (22,80)",
@@ -279,7 +519,11 @@
         "DeliveryStreamType" : "DirectPut",
         "S3DestinationConfiguration" : 
         {
-          "BucketARN" : {"Ref" : "BucketArn" },
+          "BucketARN" : 
+            { "Fn::Join" : [ "" , [
+              "arn:aws:s3:::",
+              {"Ref" : "Bucket" }
+            ]] },
           "BufferingHints" : {
             "IntervalInSeconds" : "60",
             "SizeInMBs" : "1"
@@ -575,7 +819,7 @@
         }
       }
     },
-    "MetricsTable" : {
+    "MetricTable" : {
       "Type" : "AWS::DynamoDB::Table",
       "Properties" : {
         "AttributeDefinitions" : [ 
@@ -586,7 +830,7 @@
         "TableName" : { "Fn::Sub" : "${AWS::StackName}-Metrics" }
       }
     },
-    "MetricsDetailTable" : {
+    "MetricDetailsTable" : {
         "Type" : "AWS::DynamoDB::Table",
         "Properties" : {
           "AttributeDefinitions" : [ 
@@ -598,7 +842,7 @@
           "TableName" : { "Fn::Sub" : "${AWS::StackName}-MetricDetails" }
         }
     },  
-    "WASALambdaRole" : {
+    "ProcessMetricsLambdaRole" : {
       "Type": "AWS::IAM::Role",
       "Properties": {
         "AssumeRolePolicyDocument": {
@@ -629,8 +873,8 @@
                 "dynamodb:UpdateItem"
               ],
               "Resource": [
-                { "Fn::GetAtt" : ["MetricsTable","Arn"] },
-                { "Fn::GetAtt" : ["MetricsDetailTable","Arn"] }
+                { "Fn::GetAtt" : ["MetricTable","Arn"] },
+                { "Fn::GetAtt" : ["MetricDetailsTable","Arn"] }
               ]
             },
             {
@@ -731,7 +975,7 @@
         "FunctionName" : { "Fn::Sub" : "${AWS::StackName}-SeedFunction" },
         "Handler" : "index.handler",
         "MemorySize" : 128,
-        "Role" : { "Fn::GetAtt" : [ "WASALambdaRole", "Arn" ] },
+        "Role" : { "Fn::GetAtt" : [ "ProcessMetricsLambdaRole", "Arn" ] },
         "Runtime" : "nodejs6.10",
         "Timeout" : 30
       }
@@ -741,14 +985,14 @@
       "Properties" : {
         "ServiceToken": { "Fn::GetAtt" : ["MetricTableSeedFunction", "Arn"] },
         "Region" : { "Ref" : "AWS::Region"},
-        "DependsOn" : ["MetricTableSeedFunction", "MetricsTable"]
+        "DependsOn" : ["MetricTableSeedFunction", "MetricTable"]
       }
     },
     "ProcessMetricsFunction" : {
     	"Type" : "AWS::Lambda::Function",
       	"Properties" : {
         	"Code" : {      
-  				"S3Bucket" : "chmars-data-us-east-1",
+  				"S3Bucket" : { "Fn::Sub" : "chmars-data-${AWS::Region}" } ,
   				"S3Key" : "code/wasa.zip"
             },
 	        "Environment" : { "Variables" : {"METRIC_TABLE" : { "Fn::Sub" : "${AWS::StackName}-Metrics" }, "METRIC_DETAILS_TABLE" : { "Fn::Sub" : "${AWS::StackName}-MetricDetails" }}},
@@ -756,7 +1000,7 @@
 	        "FunctionName" : { "Fn::Sub" : "${AWS::StackName}-ProcessMetricsFunction" },
 	        "Handler" : "wasa.handler",
 	        "MemorySize" : 512,
-	        "Role" : { "Fn::GetAtt" : [ "WASALambdaRole", "Arn" ] },
+	        "Role" : { "Fn::GetAtt" : [ "ProcessMetricsLambdaRole", "Arn" ] },
 	        "Runtime" : "nodejs6.10",
 	        "Timeout" : 60
         }
