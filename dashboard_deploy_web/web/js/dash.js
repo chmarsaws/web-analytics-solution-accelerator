@@ -900,7 +900,8 @@ function init() {
                                                 makeHorizontalBarChart(mtype,items);
                                                 break;
                                             case 'visitor_count' :
-                                                document.getElementById(mtype).innerHTML = 'Visitor Count:' + items[0].UNITVALUEINT;
+                                                document.getElementById(mtype).innerHTML = 'Current Visitor Count:' + items[0].UNITVALUEINT;
+                                                makeVisitorLineChart(mtype,items);
                                                 break;
                                             case 'event_count' :
                                                 makeEventLineChart(mtype,items);
@@ -921,67 +922,69 @@ function init() {
         setTimeout( function() {
             console.log('tick\n');
             getLatestMetrics();
+            var rightnow = new Date();
+            document.getElementById("last_updated").innerHTML = "<H2> Last Updated: " + rightnow.toLocaleTimeString() + "</H2>";
         }, 10000);
     }
 
-    var chart_time_ticks = [];
-    var chart_dataset_labels = [];
-    var chart_dataset_datas = [];//[][]
-    var chart_time_ticks_display = [];
+    var event_chart_time_ticks = [];
+    var event_chart_dataset_labels = [];
+    var event_chart_dataset_datas = [];//[][]
+    var event_chart_time_ticks_display = [];
 
     function makeEventLineChart(mtype,items){
         dt = new Date(items[0].EVENTTIMESTAMP);
         //if there are no ticks or if the tick is not already in the array, add it
-        if(chart_time_ticks.length == 0 || chart_time_ticks.indexOf(items[0].EVENTTIMESTAMP)==-1){
-            chart_time_ticks_display.push(dt.toTimeString().split(' ')[0]);
-            chart_time_ticks.push(items[0].EVENTTIMESTAMP);
+        if(event_chart_time_ticks.length == 0 || event_chart_time_ticks.indexOf(items[0].EVENTTIMESTAMP)==-1){
+            event_chart_time_ticks_display.push(dt.toTimeString().split(' ')[0]);
+            event_chart_time_ticks.push(items[0].EVENTTIMESTAMP);
         }
-        if(chart_time_ticks.length>20){ //cull data over 20 data points
-            chart_time_ticks.shift();
-            chart_dataset_labels.shift();
-            chart_time_ticks_display.shift();
-            for(var i=0;i<chart_time_ticks.length;i++){
-                chart_dataset_datas[i].shift();
+        if(event_chart_time_ticks.length>20){ //cull data over 20 data points
+            event_chart_time_ticks.shift();
+            event_chart_dataset_labels.shift();
+            event_chart_time_ticks_display.shift();
+            for(var i=0;i<event_chart_time_ticks.length;i++){
+                event_chart_dataset_datas[i].shift();
             }
         }
         //go through each item and if a label already exists for it, add the data to the corresponding datas array 
         for(var j=0;j < items.length ;j++)
         {
-            var data_index = chart_dataset_labels.indexOf(items[j].METRICITEM);
+            var data_index = event_chart_dataset_labels.indexOf(items[j].METRICITEM);
             if (data_index > -1){
-                chart_dataset_datas[data_index].push(items[j].UNITVALUEINT);
+                event_chart_dataset_datas[data_index].push(items[j].UNITVALUEINT);
             } else {
                 //if the label does not already exist, create an array with nulls for the preceding ticks
-                chart_dataset_labels.push(items[j].METRICITEM);
-                var data = Array(chart_time_ticks.length - 1).fill(null);
+                event_chart_dataset_labels.push(items[j].METRICITEM);
+                var data = Array(event_chart_time_ticks.length - 1).fill(null);
                 data.push(items[j].UNITVALUEINT);
-                chart_dataset_datas.push(data);
+                event_chart_dataset_datas.push(data);
 
             }
         }
         //go through all the existing labels to see if there was a missing element 
         //in this set of items.  If there was set a null in the data for this tick
-        for(var j=0;j < chart_dataset_labels.length;j++){ 
-            if(!findItem(items,chart_dataset_labels[j])) {
-                chart_dataset_datas[j].push(null);
+        for(var j=0;j < event_chart_dataset_labels.length;j++){ 
+            if(!findItem(items,event_chart_dataset_labels[j])) {
+                event_chart_dataset_datas[j].push(null);
             } 
         }
         //build the data for the chart
         var chart_datasets = [];
-        for(var i = 0;i < chart_dataset_labels.length;i++){
-         chart_datasets.push({ label: chart_dataset_labels[i], 
+        for(var i = 0;i < event_chart_dataset_labels.length;i++){
+         chart_datasets.push({ label: event_chart_dataset_labels[i], 
             fill: false, 
             spanGaps: true,
             backgroundColor: dynamicColors(chart_datasets.length+1), 
             borderColor: dynamicColors(chart_datasets.length+1),    
-            data: chart_dataset_datas[i] });
+            data: event_chart_dataset_datas[i] });
         }
         var elem = document.getElementById(mtype);
         var ctx = elem.getContext("2d");
         elem.chart && elem.chart.destroy();
         var config = {
             type: "line",
-            data: {labels: chart_time_ticks_display , datasets: chart_datasets }, 
+            data: {labels: event_chart_time_ticks_display , datasets: chart_datasets }, 
             options: {
                 legend: {
                     position: 'bottom'
@@ -996,6 +999,79 @@ function init() {
         var chart = new Chart(ctx,config);
         elem.chart = chart;
     }
+
+    var visitor_chart_time_ticks = [];
+    var visitor_chart_dataset_labels = [];
+    var visitor_chart_dataset_datas = [];
+    var visitor_chart_time_ticks_display = [];
+
+    function makeVisitorLineChart(mtype,items){
+        dt = new Date(items[0].EVENTTIMESTAMP);
+        //if there are no ticks or if the tick is not already in the array, add it
+        if(visitor_chart_time_ticks.length == 0 || visitor_chart_time_ticks.indexOf(items[0].EVENTTIMESTAMP)==-1){
+            visitor_chart_time_ticks_display.push(dt.toTimeString().split(' ')[0]);
+            visitor_chart_time_ticks.push(items[0].EVENTTIMESTAMP);
+        }
+        if(visitor_chart_time_ticks.length>20){ //cull data over 20 data points
+            visitor_chart_time_ticks.shift();
+            visitor_chart_dataset_labels.shift();
+            visitor_chart_time_ticks_display.shift();
+            for(var i=0;i<visitor_chart_time_ticks.length;i++){
+                visitor_chart_dataset_datas[i].shift();
+            }
+        }
+        //go through each item and if a label already exists for it, add the data to the corresponding datas array 
+        for(var j=0;j < items.length ;j++)
+        {
+            var data_index = visitor_chart_dataset_labels.indexOf(items[j].METRICITEM);
+            if (data_index > -1){
+                visitor_chart_dataset_datas[data_index].push(items[j].UNITVALUEINT);
+            } else {
+                //if the label does not already exist, create an array with nulls for the preceding ticks
+                visitor_chart_dataset_labels.push(items[j].METRICITEM);
+                var data = Array(visitor_chart_time_ticks.length - 1).fill(null);
+                data.push(items[j].UNITVALUEINT);
+                visitor_chart_dataset_datas.push(data);
+            }
+        }
+        //go through all the existing labels to see if there was a missing element 
+        //in this set of items.  If there was set a null in the data for this tick
+        for(var j=0;j < visitor_chart_dataset_labels.length;j++){ 
+            if(!findItem(items,visitor_chart_dataset_labels[j])) {
+                visitor_chart_dataset_datas[j].push(null);
+            } 
+        }
+        //build the data for the chart
+        var chart_datasets = [];
+        for(var i = 0;i < visitor_chart_dataset_labels.length;i++){
+         chart_datasets.push({ label: visitor_chart_dataset_labels[i], 
+            fill: true, 
+            spanGaps: true,
+            backgroundColor: dynamicColors(chart_datasets.length+1), 
+            borderColor: dynamicColors(chart_datasets.length+1),    
+            data: visitor_chart_dataset_datas[i] });
+        }
+        var elem = document.getElementById("visitor_count_line");
+        var ctx = elem.getContext("2d");
+        elem.chart && elem.chart.destroy();
+        var config = {
+            type: "line",
+            data: {labels: visitor_chart_time_ticks_display , datasets: chart_datasets }, 
+            options: {
+                legend: {
+                    display: false
+                },
+                responsive: true,
+                scales: {
+                    xAxes: [{
+                        display: true 
+                    }]
+            }}
+        };  
+        var chart = new Chart(ctx,config);
+        elem.chart = chart;
+    }
+
 
     function findItem(items,metricItem){
         for(var i=0;i<items.length;i++){

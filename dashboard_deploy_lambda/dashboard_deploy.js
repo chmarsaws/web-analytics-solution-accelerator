@@ -6,38 +6,49 @@ var async = require('async');
 var WEB_FILE_SOURCE_KEY = 'web'; //update to location of static web site
 
 exports.createDashboardComponents = function(event, context) {
-    
     console.log(event);
+    
+    var region = event.ResourceProperties.Region,
+    sourceBucketName = event.ResourceProperties.S3Source,
+    destinationBucketName = event.ResourceProperties.S3Destination,
+    dashboardURL = event.ResourceProperties.DashboardURL;
+    aws.config.region = region;
 
     if (event.RequestType == "Delete") {
-        //Disposition of the copied objects will be determined by the bucket retention property and not be individually deleted here when the stack is deleted.
-        sendResponse(event, context, "SUCCESS");
+        11
+        async.series([
+            deleteStaticContent
+        ], function (err, result) {
+            if(err) {
+                console.log(err);
+                sendResponse(event, context, "FAILED", err);
+            }
+            else {
+                sendResponse(event, context, "SUCCESS");
+            }
+        });
         return;
+    } else {
+        if(event.RequestType == "Create") {
+            async.series([
+                copyStaticContent,
+                createIndex
+            ], function (err, result) {
+                if(err) {
+                    console.log(err);
+                    sendResponse(event, context, "FAILED", err);
+                }
+                else {
+                    var indexTarget = 'http://' + destinationBucketName + '.s3-website-' + region + '.amazonaws.com';
+                    console.log('indexTarget=' + indexTarget);
+                    var response = {
+                        IndexURL : indexTarget
+                    };
+                    sendResponse(event, context, "SUCCESS", response);
+                }
+            });
+        }
     }
-    var region = event.ResourceProperties.Region,
-        sourceBucketName = event.ResourceProperties.S3Source,
-        destinationBucketName = event.ResourceProperties.S3Destination,
-        dashboardURL = event.ResourceProperties.DashboardURL;
-
-    aws.config.region = region;
-    async.series([
-        copyStaticContent,
-        createIndex
-    ], function (err, result) {
-        if(err) {
-            console.log(err);
-            sendResponse(event, context, "FAILED", err);
-        }
-        else {
-            var indexTarget = 'http://' + destinationBucketName + '.s3-website-' + region + '.amazonaws.com';
-            console.log('indexTarget=' + indexTarget);
-            var response = {
-                IndexURL : indexTarget
-            };
-            sendResponse(event, context, "SUCCESS", response);
-        }
-    });
-
 
     function copyStaticContent(callback) {
 
@@ -85,6 +96,57 @@ exports.createDashboardComponents = function(event, context) {
                             callback(asyncErr);
                         } else {
                             console.log("All files copied.");
+                            callback();
+                        }
+                    });
+
+                }
+            }
+        });
+    }
+
+    function deleteStaticContent(callback) {
+
+        var s3 = new aws.S3();
+
+        var params = {
+            Bucket: destinationBucketName,
+            Prefix: ""
+        };
+        console.log("TRY TO LIST " + destinationBucketName);
+        s3.listObjectsV2(params, function (err, data) {
+            if (err) {
+                callback(err);
+            }
+            else {
+                if(data.Contents.length) {
+                    async.each(data.Contents, function(file, cb) {
+                        var params = {
+                            Bucket: destinationBucketName,
+                            Key: file.Key
+                        };
+                        try {
+                            s3.deleteObject(params, function (copyErr, copyData) {
+                                if (copyErr) {
+                                    console.log(copyErr);
+                                }
+                                else {
+                                    console.log("Deleted:" + params.Key);
+                                }
+
+                            });
+                        } catch (ex){
+
+                        }
+                        finally {
+                            cb();
+                        }
+                    }, function(asyncErr) {
+                        if (asyncErr) {
+                            console.log(asyncErr);
+                            callback(asyncErr);
+                        } else {
+                            console.log("All files deleted.");
                             callback();
                         }
                     });

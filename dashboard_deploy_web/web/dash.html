@@ -148,8 +148,8 @@
                                 <h2 id="visitor_count" ts="0">Visistor Count: 0</h2>
                             </div>
                             <span class="count_top">
-                                <span id="A_percent">Last Updated:
-                                    <h2>0</h2>
+                                <span id="last_updated">Last Updated:
+                                    <h2></h2>
                                 </span>
                             </span>
                         </div>
@@ -170,7 +170,7 @@
                     <div class="col-md-5 col-xs-12">
                         <div class="x_title">
                             <div>
-                                <h3>Anomaly Scores
+                                <h3>Latest Anomaly Detected
                                     <small>event : count</small>
                                 </h3>
                             </div>
@@ -185,45 +185,15 @@
 
                 <div class="row aws-mb-l">
                     <div class="col-md-5 col-md-offset-1 col-xs-12">
-
                         <div class="x_title">
-                            <div class="col-md-6">
+                            <div >
                                 <h3>Visitor Count</h3>
                             </div>
-
                             <div class="clearfix"></div>
                         </div>
                         <div class="x_content">
-                            <canvas id="visitor_count_line_tbd" ts="0"></canvas>
+                            <canvas id="visitor_count_line" ts="0"></canvas>
                             <div class="clearfix"></div>
-                        </div>
-
-
-                    </div>
-
-                    <div class="col-md-5 col-xs-12">
-                        <div class="x_title">
-                            <div class="col-md-6">
-                                <h3>Calls By User</h3>
-                            </div>
-
-                            <div class="clearfix"></div>
-                        </div>
-                        <div class="x_content">
-                            <canvas id="callsByUserCanvas"></canvas>
-                            <div class="clearfix"></div>
-                        </div>
-                    </div>
-                </div>
-
-                <div class="row aws-mb-l">
-                    <div class="col-md-5 col-md-offset-1 col-xs-12">
-
-                        <div class="x_title">
-                            <h3>Recent Events</h3>
-                        </div>
-                        <div class="x_content">
-                            <canvas id="event_count_nope" ts="0"></canvas>
                         </div>
                     </div>
 
@@ -235,6 +205,7 @@
                             <canvas id="agent_count" ts="0"></canvas>
                         </div>
                     </div>
+                    
                 </div>
                 <div class="row aws-mb-l">
                     <div class="col-xs-10 col-xs-offset-1 col-xs-12">

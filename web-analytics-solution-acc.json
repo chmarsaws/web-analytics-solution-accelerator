@@ -239,7 +239,7 @@
               {
                 "Effect": "Allow",
                 "Action": [
-                  "dynamodb:Scan"
+                  "dynamodb:Scan"2
                 ],
                 "Resource": [
                   {"Fn::GetAtt" : ["MetricTable", "Arn"] }
@@ -895,7 +895,7 @@
           } ]
         },
         "Policies": [ {
-          "PolicyName": "KSALambdaExecutionRole",
+          "PolicyName": "RecordProcessingLambdaExecutionRole",
           "PolicyDocument": {
             "Version": "2012-10-17",
             "Statement": [{
@@ -1092,16 +1092,35 @@
                 "Action": [
                   "s3:PutObject",
                   "s3:PutObjectAcl",
-                  "s3:*"
+                  "s3:DeleteObject",
+                  "s3:ListObjects",
+                  "s3:ListBucket"                  
                 ],
                 "Resource" : [
                   { "Fn::Join" : [ "", [
                     { "Fn::GetAtt" : ["S3HostingBucket", "Arn" ]},
                     "/*"
-                  ]] }, 
-                  "*"
+                  ]] },
+                  { "Fn::Join" : [ "", [
+                    { "Fn::GetAtt" : ["S3HostingBucket", "Arn" ]},
+                    "/"
+                  ]] },
+                  { "Fn::GetAtt" : ["S3HostingBucket", "Arn" ]}
                 ]
               },
+              { 
+                "Effect": "Allow",
+                "Action": [
+                  "s3:GetObject"
+                ],
+                "Resource" : [
+                  { "Fn::Join" : [ "", [
+                     "arn:aws:s3:::",
+                     { "Fn::Sub" : "chmars-web-deploy-${AWS::Region}" },
+                    "/*"
+                  ]] }
+                ]
+              },              
               {
                 "Sid": "CWLogs",
                 "Effect": "Allow",
