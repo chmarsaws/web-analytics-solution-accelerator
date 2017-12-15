@@ -23,6 +23,9 @@ exports.createPoolAndUser = function(event, context) {
         unauthRoleArn = event.ResourceProperties.UnauthRoleArn,
         poolName = event.ResourceProperties.PoolName,
         clientName = event.ResourceProperties.ClientName,
+        s3webhostingbucket = event.ResourceProperties.S3Bucket,
+        metricsTable = event.ResourceProperties.MetricsTable,
+        metricDetailsTable = event.ResourceProperties.MetricDetailsTable,
         userPoolId = null,
         identityPoolId = null,
         clientAppId = null;
@@ -46,13 +49,19 @@ exports.createPoolAndUser = function(event, context) {
             sendResponse(event, context, "FAILED", err);
         }
         else {
+            var dashTarget = 'https://s3';
+            if(region != 'us-east-1') {
+                dashTarget += '-' + region;
+            }
+            console.log('dashTarget=' + dashTarget);
+            dashTarget += '.amazonaws.com/' + s3webhostingbucket + '/dash.html?' + "upid=" + userPoolId + "&ipid=" + identityPoolId + "&cid=" + clientAppId + "&r=" + region + '&mt=' + metricsTable + '&mdt=' + metricDetailsTable
+            console.log('dashTarget=' + dashTarget);
             var response = {
-                Querystring: "upid=" + userPoolId + "&ipid=" + identityPoolId + "&cid=" + clientAppId + "&r=" + region
+                DashboardURL : dashTarget
             };
 
             sendResponse(event, context, "SUCCESS", response);
         }
-
     });
 
 

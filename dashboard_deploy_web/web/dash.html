@@ -1,0 +1,294 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+    <!-- Meta, title, CSS, favicons, etc. -->
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+
+    <title>Web Analytics Dashboard</title>
+
+    <!-- Bootstrap -->
+    <!-- Bootstrap -->
+    <link href="3p/bootstrap/dist/css/bootstrap.min.css" rel="stylesheet">
+
+    <!-- Font Awesome -->
+    <link href="3p/font-awesome/css/font-awesome.min.css" rel="stylesheet">
+
+
+    <!-- Custom Theme Style-->
+    <link href="css/custom.css" rel="stylesheet">
+</head>
+
+<!--<body class="nav-md">-->
+
+<body>
+    <div class="container body">
+        <div class="main_container">
+            <nav class="navbar navbar-inverse navbar-fixed-top">
+
+                <div class="navbar-header">
+                    <button class="navbar-toggle" type="button" data-toggle="collapse" data-target="#navbar-main">
+                        <span class="icon-bar"></span>
+                        <span class="icon-bar"></span>
+                        <span class="icon-bar"></span>
+                    </button>
+                    <a class="navbar-brand" color="black" href="#">AWS Web Analytics Solution Accelerator Dashboard</a>
+                </div>
+
+                <div class="navbar-collapse collapse navbar-right" id="navbar-main">
+                    <ul class="nav navbar-nav">
+                        <li>
+                            <a href="#" id="configureLink" data-toggle="modal" data-target="#cognitoModal" data-backdrop="static" data-keyboard="false">
+                                <i class="fa fa-cog"></i> Configure</a>
+                        </li>
+                        <li>
+                            <a target="_blank" href="help.html">
+                                <i class="fa fa-question-circle"></i> Help</a>
+                        </li>
+                        <li>
+                            <a id="signInSpinner" class="hidden">
+                                <i class="fa fa-spinner fa-spin"></i> Signing In</a>
+                        </li>
+
+                        <li>
+                            <a id="logoutLink" class="hidden" href="#">
+                                <i class="fa fa-sign-out"></i> Log Out</a>
+                        </li>
+
+                    </ul>
+                    <form class="navbar-form navbar-right" role="search" id="loginForm">
+                        <div class="form-group">
+                            <input type="text" class="form-control" id="userName" placeholder="Username">
+                        </div>
+                        <div class="form-group">
+                            <input type="password" class="form-control" id="password" placeholder="Password">
+                        </div>
+                        <button type="button" class="btn btn-default" id="btnLogin">Sign In</button>
+                    </form>
+                </div>
+
+            </nav>
+
+
+            <div class="jumbotron" id="unauthMessage" style="padding-top: 100px">
+                <div class="container">
+                    <h1>AWS Web Analytics Dashboard</h1>
+                    <p> Sign in to get started. If you haven't configured an Amazon Cognito user, choose
+                        <a href="help.html">Help</a>.</p>
+                </div>
+            </div>
+            <!-- /top navigation -->
+            <div class="modal fade" id="cognitoModal" tabindex="-1" role="dialog" aria-labelledby="myModalLabel">
+                <div class="modal-dialog" role="document">
+                    <div class="modal-content">
+                        <div class="modal-header">
+                            <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                                <span aria-hidden="true">&times;</span>
+                            </button>
+                            <h4 class="modal-title" id="configurationModalLabel">Configuration</h4>
+                        </div>
+                        <div class="modal-body">
+                            <div class="alert alert-danger hidden" id="configErr">
+                                The Dashboard is not configured correctly. Please ensure these values are set and are accurate.
+                            </div>
+
+                            <p>
+                                These values are used by the Dashboard to validate users in your Cognito User Pool. Don't change these values unless you
+                                know what you're doing!
+                            </p>
+                            <div id="cognitoConfig">
+                                <form>
+                                    <div class="form-group">
+                                        <label for="userPoolId">Cognito User Pool ID</label>
+                                        <input type="text" class="form-control" id="userPoolId">
+                                    </div>
+                                    <div class="form-group">
+                                        <label for="clientId">Cognito Client ID</label>
+                                        <input type="text" class="form-control" id="clientId">
+                                    </div>
+                                    <div class="form-group">
+                                        <label for="identityPoolId">Cognito Identity Pool ID</label>
+                                        <input type="text" class="form-control" id="identityPoolId">
+                                    </div>
+                                    <div class="form-group">
+                                        <label for="userPoolRegion">User Pool Region</label>
+                                        <input type="text" class="form-control" id="userPoolRegion">
+                                    </div>
+                                    <div class="form-group">
+                                        <label for="userPoolRegion">Metrics Table</label>
+                                        <input type="text" class="form-control" id="metricsTable">
+                                    </div>
+                                    <div class="form-group">
+                                        <label for="userPoolRegion">Metric Details Table</label>
+                                        <input type="text" class="form-control" id="metricDetailsTable">
+                                    </div>
+                                </form>
+                            </div>
+                        </div>
+                        <div class="modal-footer">
+                            <button type="button" class="btn btn-secondary" data-dismiss="modal" id="btnCancelConfiguration">Cancel</button>
+                            <button type="button" class="btn btn-primary" id="btnSaveConfiguration">Save Changes</button>
+
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <!-- page content -->
+            <div class="right_col hidden" id="dashboard_content" role="main">
+                <div class="row aws-pt-s">
+                    <div class="col-xs-10 col-xs-offset-1 col-xs-12">
+                        <div class="x_title">
+                            <h3>Total number of API calls</h3>
+                        </div>
+                        <div class="col-xs-12 tile_stats_count text-center aws-mb-l">
+                            <div class="count_top" id="A_count">
+                                <h2 id="visitor_count" ts="0">Visistor Count: 0</h2>
+                            </div>
+                            <span class="count_top">
+                                <span id="A_percent">Last Updated:
+                                    <h2>0</h2>
+                                </span>
+                            </span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="row">
+                    <div class="col-md-5 col-md-offset-1 col-xs-12 aws-mb-l">
+                        <div class="x_title">
+                            <h3>Events Per Hour</h3>
+                            <div class="clearfix"></div>
+                        </div>
+                        <div class="x_content">
+                            <canvas id="hourly_events" ts="0"></canvas>
+                            <div class="clearfix"></div>
+                        </div>
+                    </div>
+                    <div class="col-md-5 col-xs-12">
+                        <div class="x_title">
+                            <div>
+                                <h3>Anomaly Scores
+                                    <small>event : count</small>
+                                </h3>
+                            </div>
+                            <div class="clearfix"></div>
+                        </div>
+                        <div class="x_content">
+                            <canvas id="event_anomaly" ts="0"></canvas>
+                            <div class="clearfix"></div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="row aws-mb-l">
+                    <div class="col-md-5 col-md-offset-1 col-xs-12">
+
+                        <div class="x_title">
+                            <div class="col-md-6">
+                                <h3>Visitor Count</h3>
+                            </div>
+
+                            <div class="clearfix"></div>
+                        </div>
+                        <div class="x_content">
+                            <canvas id="visitor_count_line_tbd" ts="0"></canvas>
+                            <div class="clearfix"></div>
+                        </div>
+
+
+                    </div>
+
+                    <div class="col-md-5 col-xs-12">
+                        <div class="x_title">
+                            <div class="col-md-6">
+                                <h3>Calls By User</h3>
+                            </div>
+
+                            <div class="clearfix"></div>
+                        </div>
+                        <div class="x_content">
+                            <canvas id="callsByUserCanvas"></canvas>
+                            <div class="clearfix"></div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="row aws-mb-l">
+                    <div class="col-md-5 col-md-offset-1 col-xs-12">
+
+                        <div class="x_title">
+                            <h3>Recent Events</h3>
+                        </div>
+                        <div class="x_content">
+                            <canvas id="event_count_nope" ts="0"></canvas>
+                        </div>
+                    </div>
+
+                    <div class="col-md-5 col-xs-12">
+                        <div class="x_title">
+                            <h3>User Agents</h3>
+                        </div>
+                        <div class="x_content">
+                            <canvas id="agent_count" ts="0"></canvas>
+                        </div>
+                    </div>
+                </div>
+                <div class="row aws-mb-l">
+                    <div class="col-xs-10 col-xs-offset-1 col-xs-12">
+                        <div class="x_title">
+                            <h3>Recent Events</h3>
+                        </div>
+                        <div class="x_content">
+                            <canvas id="event_count" ts="0"></canvas>
+                        </div>
+                    </div>
+                </div>
+                <div class="row aws-mb-l">
+                    <div class="col-xs-10 col-xs-offset-1 col-xs-12">
+                        <div class="x_title">
+                            <h3>Referrers</h3>
+                        </div>
+                        <div class="x_content">
+                            <canvas id="referral_count" ts="0"></canvas>
+                        </div>
+                    </div>
+                </div>
+                <div class="row aws-mb-l">
+                    <div class="col-xs-10 col-xs-offset-1 col-xs-12">
+                        <div class="x_title">
+                            <h3>Pages</h3>
+                        </div>
+                        <div class="x_content">
+                            <canvas id="top_pages" ts="0"></canvas>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- jQuery -->
+    <script src="3p/jquery/dist/jquery.min.js"></script>
+    <!-- Bootstrap -->
+    <script src="3p/bootstrap/dist/js/bootstrap.min.js"></script>
+    <!-- Chart.js -->
+    <!-- script src="3p/Chart.js/dist/Chart.min.js"></script -->
+    <script src="js/Chart.js"></script>
+
+
+    <script type="text/javascript" src="https://sdk.amazonaws.com/js/aws-sdk-2.7.20.min.js"></script>
+
+    <!-- Custom Theme Scripts -->
+    <!--<script src="js/custom.js"></script>-->
+    <script src="js/dash.js"></script>
+    <script src="js/aws-cognito-sdk.min.js"></script>
+    <script src="js/amazon-cognito-identity.min.js"></script>
+    <script type="text/javascript">
+        window.onload = init;
+    </script>
+</body>
+
+</html>
