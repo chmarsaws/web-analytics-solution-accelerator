@@ -239,7 +239,7 @@
               {
                 "Effect": "Allow",
                 "Action": [
-                  "dynamodb:Scan"2
+                  "dynamodb:Scan"
                 ],
                 "Resource": [
                   {"Fn::GetAtt" : ["MetricTable", "Arn"] }
