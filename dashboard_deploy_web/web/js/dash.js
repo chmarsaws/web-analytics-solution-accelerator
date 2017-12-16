@@ -480,8 +480,7 @@ function init() {
     }
 
     var visitor_chart_time_ticks = [];
-    var visitor_chart_dataset_labels = [];
-    var visitor_chart_dataset_datas = [];
+    var visitor_chart_dataset_data = [];
     var visitor_chart_time_ticks_display = [];
 
     function makeVisitorLineChart(mtype,items){
@@ -490,52 +489,30 @@ function init() {
         if(visitor_chart_time_ticks.length == 0 || visitor_chart_time_ticks.indexOf(items[0].EVENTTIMESTAMP)==-1){
             visitor_chart_time_ticks_display.push(dt.toTimeString().split(' ')[0]);
             visitor_chart_time_ticks.push(items[0].EVENTTIMESTAMP);
+            visitor_chart_dataset_data.push(items[0].UNITVALUEINT);
         }
         if(visitor_chart_time_ticks.length>20){ //cull data over 20 data points
             visitor_chart_time_ticks.shift();
-            visitor_chart_dataset_labels.shift();
             visitor_chart_time_ticks_display.shift();
-            for(var i=0;i<visitor_chart_time_ticks.length;i++){
-                visitor_chart_dataset_datas[i].shift();
-            }
+            visitor_chart_dataset_data.shift();
         }
-        //go through each item and if a label already exists for it, add the data to the corresponding datas array 
-        for(var j=0;j < items.length ;j++)
-        {
-            var data_index = visitor_chart_dataset_labels.indexOf(items[j].METRICITEM);
-            if (data_index > -1){
-                visitor_chart_dataset_datas[data_index].push(items[j].UNITVALUEINT);
-            } else {
-                //if the label does not already exist, create an array with nulls for the preceding ticks
-                visitor_chart_dataset_labels.push(items[j].METRICITEM);
-                var data = Array(visitor_chart_time_ticks.length - 1).fill(null);
-                data.push(items[j].UNITVALUEINT);
-                visitor_chart_dataset_datas.push(data);
-            }
-        }
-        //go through all the existing labels to see if there was a missing element 
-        //in this set of items.  If there was set a null in the data for this tick
-        for(var j=0;j < visitor_chart_dataset_labels.length;j++){ 
-            if(!findItem(items,visitor_chart_dataset_labels[j])) {
-                visitor_chart_dataset_datas[j].push(null);
-            } 
-        }
+
         //build the data for the chart
-        var chart_datasets = [];
-        for(var i = 0;i < visitor_chart_dataset_labels.length;i++){
-         chart_datasets.push({ label: visitor_chart_dataset_labels[i], 
+        var chart_dataset = [{  
+            label: "Visitor Count",
             fill: true, 
             spanGaps: true,
-            backgroundColor: dynamicColors(chart_datasets.length+1), 
-            borderColor: dynamicColors(chart_datasets.length+1),    
-            data: visitor_chart_dataset_datas[i] });
-        }
+            backgroundColor: "rgba(255,153,0,0.4)",
+            borderColor: "rgba(255,153,0,0.4)",    
+            data: visitor_chart_dataset_data 
+        }];
+
         var elem = document.getElementById("visitor_count_line");
         var ctx = elem.getContext("2d");
         elem.chart && elem.chart.destroy();
         var config = {
             type: "line",
-            data: {labels: visitor_chart_time_ticks_display , datasets: chart_datasets }, 
+            data: {labels: visitor_chart_time_ticks_display , datasets: chart_dataset }, 
             options: {
                 legend: {
                     display: false
