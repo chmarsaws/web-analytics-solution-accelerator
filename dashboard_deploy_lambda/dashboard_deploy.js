@@ -15,7 +15,6 @@ exports.createDashboardComponents = function(event, context) {
     aws.config.region = region;
 
     if (event.RequestType == "Delete") {
-        11
         async.series([
             deleteStaticContent
         ], function (err, result) {
