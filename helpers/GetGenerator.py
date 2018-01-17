@@ -36,7 +36,7 @@ parser.add_argument("delay",help="the time in seconds to delay between calls (ie
 args = parser.parse_args()
 i = 0
 s = requests.Session()
-print "calls=" + str(args.calls)
+#print "calls=" + str(args.calls)
 while (i < int(args.calls)):
 	#datavalue = "{ 'event' : '" + getEvent() + "' }, { 'page' : '" + getPage() + "'}, { 'clientid' : '" + getUser() + "' }"
 	#datavalue = "{0}-{1}-{2}".format(getEvent(),getPage(),getUser())

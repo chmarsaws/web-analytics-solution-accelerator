@@ -1,0 +1,66 @@
+{
+  "AWSTemplateFormatVersion": "2010-09-09",
+  "Description" : "S3 Bucket Default Encryption with SSE Enabler",
+  "Parameters" : {
+    "Bucket" : {
+      "Type" : "String",
+      "Description" : "Existing S3 bucket name in this region." }
+  },
+  "Resources": {
+    "BucketRuleApplicationLambda" : {
+      "Type" : "AWS::Lambda::Function",
+      "Properties" : {
+        "Code": {
+          "S3Bucket" : { "Fn::Sub" : "chmars-data-${AWS::Region}" } ,
+          "S3Key": "code/DefaultBucketEncryption.zip"
+        },
+        "Description": "Sets the default bucket encryption rule using SSE AES256.",
+        "FunctionName": { "Fn::Sub" : "${AWS::StackName}-BucketDefultEncryptionEnabler" },
+        "Handler": "DefaultBucketEncryption.TurnOnDefaultBucketEncryption",
+        "Role": { "Fn::GetAtt" : ["BucketRuleExecutionRole", "Arn"] },
+        "Runtime": "nodejs6.10",
+        "Timeout": 30
+      }
+    },    
+    "BucketRuleExecutionRole": {
+      "Type": "AWS::IAM::Role",
+      "Properties": {
+        "AssumeRolePolicyDocument": {
+          "Version": "2012-10-17",
+          "Statement": [{ "Effect": "Allow", "Principal": {"Service": ["lambda.amazonaws.com"]}, "Action": ["sts:AssumeRole"] }]
+        },
+        "Path": "/",
+        "Policies": [{
+          "PolicyName": "BucketRuleSetter",
+          "PolicyDocument": {
+            "Version": "2012-10-17",
+            "Statement": [
+              {
+                "Effect": "Allow",
+                "Action": ["s3:PutEncryptionConfiguration"],
+                "Resource": { 
+                	"Fn::Join" : [ "" , [
+                    "arn:aws:s3:::",
+                    {"Ref" : "Bucket" }
+                    ]] 
+                }
+              },
+              {
+                "Effect": "Allow",
+                "Action": ["logs:*"],
+                "Resource": "arn:aws:logs:*:*:*" 
+              }
+            ]
+          }
+        }]
+      }
+    },
+    "BucketRuleApplicationExecution" : {
+      "Type": "Custom::BucketRuleApplicationExecution",
+      "Properties": {
+        "ServiceToken": { "Fn::GetAtt" : ["BucketRuleApplicationLambda", "Arn"] },
+        "S3Bucket" : { "Ref" : "Bucket" }
+      }
+    }
+  }
+}
