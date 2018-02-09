@@ -3,7 +3,7 @@
 var aws = require('aws-sdk');
 var async = require('async');
 
-var WEB_FILE_SOURCE_KEY = 'web'; //update to location of static web site
+var WEB_SOURCE_PREFIX = 'web'; //update to location of static web site
 
 exports.createDashboardComponents = function(event, context) {
     console.log(event);
@@ -55,40 +55,33 @@ exports.createDashboardComponents = function(event, context) {
 
         var params = {
             Bucket: sourceBucketName,
-            Prefix: WEB_FILE_SOURCE_KEY
+            Key: WEB_SOURCE_PREFIX + '/manifest.json',
+            ResponseContentEncoding: 'utf8', 
+            ResponseContentType: 'application/json'            
         };
-
-        s3.listObjectsV2(params, function (err, data) {
+        s3.getObject(params,function (err, data) {
             if (err) {
                 callback(err);
             }
             else {
-                if(data.Contents.length) {
-                    async.each(data.Contents, function(file, cb) {
+                var manifest = JSON.parse(data.Body);
+                if(manifest.files.length > 0) {
+                    async.each(manifest.files, function(file, cb) {
                         var params = {
                             Bucket: destinationBucketName,
-                            CopySource: sourceBucketName + "/" + file.Key,
-                            Key: file.Key.replace(WEB_FILE_SOURCE_KEY + "/", "")
+                            CopySource: sourceBucketName + "/" + file,
+                            Key: file
                         };
-
-                        //skip keys that represent directories in the bucket
-                        if(params.CopySource.slice(-1) != "/") {
-                            s3.copyObject(params, function (copyErr, copyData) {
-                                if (copyErr) {
-                                    console.log(copyErr);
-                                    cb(copyErr);
-                                }
-                                else {
-                                    console.log("Copied to: " + params.Key);
-                                    cb();
-                                }
-
-                            });
-                        } else {
-                            cb();
-                        }
-
-
+                        s3.copyObject(params, function (copyErr, copyData) {
+                            if (copyErr) {
+                                console.log(copyErr);
+                                cb(copyErr);
+                            }
+                            else {
+                                console.log("Copied to: " + params.Key);
+                                cb();
+                            }
+                        });
                     }, function(asyncErr) {
                         if (asyncErr) {
                             console.log(asyncErr);
@@ -98,7 +91,8 @@ exports.createDashboardComponents = function(event, context) {
                             callback();
                         }
                     });
-
+                } else {
+                    console.log('No files found in manifest!');
                 }
             }
         });
@@ -110,24 +104,28 @@ exports.createDashboardComponents = function(event, context) {
 
         var params = {
             Bucket: destinationBucketName,
-            Prefix: ""
+            Key: WEB_SOURCE_PREFIX + "/manifest.json",
+            ResponseContentEncoding: 'utf8', 
+            ResponseContentType: 'application/json'
         };
-        console.log("TRY TO LIST " + destinationBucketName);
-        s3.listObjectsV2(params, function (err, data) {
+        console.log("Open manifest-> s3://" + destinationBucketName + '/' + WEB_SOURCE_PREFIX + '/manifest.json');
+        s3.getObject(params, function (err, data) {
             if (err) {
                 callback(err);
             }
             else {
-                if(data.Contents.length) {
-                    async.each(data.Contents, function(file, cb) {
+                var manifest = JSON.parse(data.Body);
+                if(manifest.files.length > 0) {
+                    manifest.files.push('index.html'); //add generated file.
+                    async.each(manifest.files, function(file, cb) {
                         var params = {
                             Bucket: destinationBucketName,
-                            Key: file.Key
+                            Key: file
                         };
                         try {
-                            s3.deleteObject(params, function (copyErr, copyData) {
-                                if (copyErr) {
-                                    console.log(copyErr);
+                            s3.deleteObject(params, function (deleteErr, deleteData) {
+                                if (deleteErr) {
+                                    console.log(deleteErr);
                                 }
                                 else {
                                     console.log("Deleted:" + params.Key);
@@ -135,7 +133,7 @@ exports.createDashboardComponents = function(event, context) {
 
                             });
                         } catch (ex){
-
+                            console.log('Error deleting file (' + file + '):' + ex);
                         }
                         finally {
                             cb();
@@ -145,11 +143,10 @@ exports.createDashboardComponents = function(event, context) {
                             console.log(asyncErr);
                             callback(asyncErr);
                         } else {
-                            console.log("All files deleted.");
+                            console.log("Manifested files deleted.");
                             callback();
                         }
                     });
-
                 }
             }
         });

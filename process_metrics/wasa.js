@@ -183,6 +183,7 @@ function getMetricIndex(searchArray, metricType) {
             return i;
         }
     }
+    console.error('Could not find metric type [' + metricType + ']. Ensure an item exists in the MetricsTable for custom metrics. ');
     return -1; //not found
 };
 

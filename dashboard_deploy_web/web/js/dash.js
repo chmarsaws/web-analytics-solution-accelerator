@@ -21,8 +21,8 @@ function init() {
     $("#identityPoolId").val(cognitoIdentityPoolId);
     $("#clientId").val(cognitoAppClientId);
     $("#userPoolRegion").val(cognitoRegion);
-    $("#metricsTable").val();
-    $("#metricDetailsTable").val();
+    $("#metricsTable").val(stackMetricsTable);
+    $("#metricDetailsTable").val(stackMetricDetailsTable);
 
     function getConfigParameterByName(name) {
         var data = getQSParameterByName(name);

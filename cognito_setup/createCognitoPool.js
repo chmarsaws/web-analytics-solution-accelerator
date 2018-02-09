@@ -4,6 +4,7 @@ var aws = require('aws-sdk');
 var AmazonCognitoIdentity = require('amazon-cognito-identity-js');
 var async = require('async');
 
+var WEB_SOURCE_PREFIX = 'web';
 
 exports.createPoolAndUser = function(event, context) {
 
@@ -54,7 +55,7 @@ exports.createPoolAndUser = function(event, context) {
                 dashTarget += '-' + region;
             }
             console.log('dashTarget=' + dashTarget);
-            dashTarget += '.amazonaws.com/' + s3webhostingbucket + '/dash.html?' + "upid=" + userPoolId + "&ipid=" + identityPoolId + "&cid=" + clientAppId + "&r=" + region + '&mt=' + metricsTable + '&mdt=' + metricDetailsTable
+            dashTarget += '.amazonaws.com/' + s3webhostingbucket + '/' + WEB_SOURCE_PREFIX + '/dash.html?' + "upid=" + userPoolId + "&ipid=" + identityPoolId + "&cid=" + clientAppId + "&r=" + region + '&mt=' + metricsTable + '&mdt=' + metricDetailsTable
             console.log('dashTarget=' + dashTarget);
             var response = {
                 DashboardURL : dashTarget

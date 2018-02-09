@@ -85,7 +85,7 @@
   },
   "Mappings" : {
     "RegionMap" : {
-      "us-east-1"      : { "m5xlarge" : "ami-55ef662f"},
+      "us-east-1"      : { "m5xlarge" : "ami-97785bed"},
       "us-east-2"      : { "m5xlarge" : "ami-aa1b34cf"},
       "us-west-1"      : { "m5xlarge" : "ami-1a033c7a"},
       "us-west-2"      : { "m5xlarge" : "ami-32d8124a"},
@@ -319,8 +319,8 @@
                     "     {\n",
                     "          \"optionName\": \"LOGTOJSON\",\n",
                     "          \"logFormat\" : \"COMBINEDAPACHELOG\",\n",
-                    "          \"matchPattern\": \"^([\\\\d.]+) (\\\\S+) (\\\\S+) \\\\[([\\\\w:/]+\\\\s[+\\\\-]\\\\d{4})\\\\] \\\"(.+?)\\\" (\\\\d{3}) ([0-9]+) \\\"(.+?)\\\" \\\"(.+?)\\\" \\\"(.+?)\\\" \\\"(.+?)\\\" \\\"(.+?)\\\"$\",\n",
-                    "          \"customFieldNames\": [\"host\", \"ident\", \"authuser\", \"datetime\", \"request\", \"response\", \"bytes\", \"referrer\", \"agent\", \"event\", \"clientid\", \"page\"]\n",
+                    "          \"matchPattern\": \"^([\\\\d.]+) (\\\\S+) (\\\\S+) \\\\[([\\\\w:/]+\\\\s[+\\\\-]\\\\d{4})\\\\] \\\"(.+?)\\\" (\\\\d{3}) ([0-9]+) \\\"(.+?)\\\" \\\"(.+?)\\\" \\\"(.+?)\\\" \\\"(.+?)\\\" \\\"(.+?)\\\" \\\"(.+?)\\\" \\\"(.+?)\\\" \\\"(.+?)\\\" \\\"(.+?)\\\"$\",\n",
+                    "          \"customFieldNames\": [\"host\", \"ident\", \"authuser\", \"datetime\", \"request\", \"response\", \"bytes\", \"referrer\", \"agent\", \"event\", \"clientid\", \"page\", \"custom_metric_name\", \"custom_metric_int_value\", \"custom_metric_float_value\", \"custom_metric_string_value\"]\n",
                     "     }\n",
                     "     ]\n",
                     "   }\n",
@@ -379,7 +379,7 @@
                 "command": "echo \"</Directory>\" >> /etc/httpd/conf/httpd.conf"
               },
               "ca-add-data-header" : {
-                "command" : "sed -i 's/LogFormat \"%h %l %u %t \\\\\"%r\\\\\" %>s %b \\\\\"%{Referer}i\\\\\" \\\\\"%{User-Agent}i\\\\\"\" combined/LogFormat \"%h %l %u %t \\\\\"%r\\\\\" %>s %b \\\\\"%{Referer}i\\\\\" \\\\\"%{User-Agent}i\\\\\" \\\\\"%{event}i\\\\\" \\\\\"%{clientid}i\\\\\" \\\\\"%{page}i\\\\\"\" combined/' /etc/httpd/conf/httpd.conf"
+                "command" : "sed -i 's/LogFormat \"%h %l %u %t \\\\\"%r\\\\\" %>s %b \\\\\"%{Referer}i\\\\\" \\\\\"%{User-Agent}i\\\\\"\" combined/LogFormat \"%h %l %u %t \\\\\"%r\\\\\" %>s %b \\\\\"%{Referer}i\\\\\" \\\\\"%{User-Agent}i\\\\\" \\\\\"%{event}i\\\\\" \\\\\"%{clientid}i\\\\\" \\\\\"%{page}i\\\\\" \\\\\"%{custom_metric_name}i\\\\\" \\\\\"%{custom_metric_int_value}i\\\\\" \\\\\"%{custom_metric_float_value}i\\\\\" \\\\\"%{custom_metric_string_value}i\\\\\"\" combined/' /etc/httpd/conf/httpd.conf"
               }              
             },
             "services": {
@@ -820,7 +820,19 @@
                  "Mapping" : "$.clientid"  },
               {  "Name" : "page",
                  "SqlType" : "VARCHAR(256)",
-                 "Mapping" : "$.page" }                            
+                 "Mapping" : "$.page" },
+              {  "Name" : "custom_metric_name",
+                 "SqlType" : "VARCHAR(256)",
+                 "Mapping" : "$.custom_metric_name" },
+              {  "Name" : "custom_metric_int_value",
+                 "SqlType" : "INTEGER",
+                 "Mapping" : "$.custom_metric_int_value" },
+              {  "Name" : "custom_metric_float_value",
+                 "SqlType" : "DOUBLE",
+                 "Mapping" : "$.custom_metric_float_value" },
+              {  "Name" : "custom_metric_string_value",
+                 "SqlType" : "VARCHAR(256)",
+                 "Mapping" : "$.custom_metric_string_value" }                          
             ],
             "RecordFormat" : {
               "RecordFormatType" : "JSON",
@@ -1055,10 +1067,10 @@
             },
           "Description" : "Solution Accelerator for Web Analytics - Function to start Kinesis Analytics application",
           "FunctionName" : { "Fn::Sub" : "${AWS::StackName}-ka-start" },
-          "Handler" : "ka-start.lambda_handler",
+          "Handler" : "ka-start.handler",
           "MemorySize" : 128,
           "Role" : { "Fn::GetAtt" : [ "KinesisAnalyticsStarterLambdaRole", "Arn" ] },
-          "Runtime" : "python2.7",
+          "Runtime" : "nodejs6.10",
           "Timeout" : 30
         }
     },    
@@ -1093,8 +1105,7 @@
                   "s3:PutObject",
                   "s3:PutObjectAcl",
                   "s3:DeleteObject",
-                  "s3:ListObjects",
-                  "s3:ListBucket"                  
+                  "s3:GetObject"               
                 ],
                 "Resource" : [
                   { "Fn::Join" : [ "", [

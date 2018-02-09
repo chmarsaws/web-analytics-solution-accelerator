@@ -28,6 +28,44 @@ def getReferer():
 def getUserAgent():
 	return 'python_manual_agent_' + str(random.randint(1,20))
 
+def getIntMetricName():
+	custom_metrics = {
+		0 : 'page_load_time',
+		1 : 'cart_item_quantity',
+		2 : 'impression_count',
+		3 : 'idle_time_ms',
+		4 : 'mouse_distance_pixles'
+	}
+	return custom_metrics[random.randint(0,4)]
+
+def getStringMetricName():
+	custom_metrics = {
+		0 : 'poll_response',
+		1 : 'display_x_y',
+		2 : 'blocker_type',
+		3 : 'browser_version'
+	}
+	return custom_metrics[random.randint(0,3)]
+
+def getFloatMetricName():
+	custom_metrics = {
+		0 : 'purchase_amount',
+		1 : 'gpu_driver_version',
+		2 : 'page_percent_displayed',
+		3 : 'video_stopped_location',
+		4 : 'compute_render_time'
+	}
+	return custom_metrics[random.randint(0,4)]
+
+def getIntMetricValue():
+	return str(random.randint(0,100))
+
+def getFloatMetricValue():
+	return str(random.random() * random.randint(0,100))
+
+def getStringMetricValue():
+	return  "dummy_string_value_" + str(random.random() * random.randint(0,10)) 
+
 parser = argparse.ArgumentParser()
 parser.add_argument("target",help="<http...> the http(s) location to send the GET request")
 parser.add_argument("calls",help="the number of HTTP calls to make")
@@ -41,8 +79,16 @@ while (i < int(args.calls)):
 	#datavalue = "{ 'event' : '" + getEvent() + "' }, { 'page' : '" + getPage() + "'}, { 'clientid' : '" + getUser() + "' }"
 	#datavalue = "{0}-{1}-{2}".format(getEvent(),getPage(),getUser())
 	time.sleep(float(args.delay))
-	headers = {'event' : getEvent(), 'clientid' : getUser(), 'page' : getPage(), 'Referer' : getReferer() }
-	r = s.get(args.target + '?call=' + str(i),headers=headers)
+	random_metric = random.randint(0,3)
+	if (random_metric == 0):
+		headers = {'event' : getEvent(), 'clientid' : getUser(), 'page' : getPage(), 'Referer' : getReferer() }
+	if (random_metric == 1):
+		headers = {'event' : getEvent(), 'clientid' : getUser(), 'page' : getPage(), 'Referer' : getReferer(), 'custom_metric_name' : getIntMetricName(), 'custom_metric_int_value' : getIntMetricValue() }
+	if (random_metric == 2):
+		headers = {'event' : getEvent(), 'clientid' : getUser(), 'page' : getPage(), 'Referer' : getReferer(), 'custom_metric_name' : getFloatMetricName(), 'custom_metric_float_value' : getFloatMetricValue() }
+	if (random_metric == 3):
+		headers = {'event' : getEvent(), 'clientid' : getUser(), 'page' : getPage(), 'Referer' : getReferer(), 'custom_metric_name' : getStringMetricName(), 'custom_metric_string_value' : getStringMetricValue() }
+	r = s.post(args.target + '?call=' + str(i),headers=headers)
 	#r = requests.get(args.target)
 	if(r.status_code==200):
 		sys.stdout.write( str(i) + "-")

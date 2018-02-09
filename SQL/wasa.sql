@@ -17,6 +17,21 @@ SELECT STREAM 'visitor_count', UNIX_TIMESTAMP(weblogs.window_time), COUNT(weblog
     GROUP BY
     window_time;
 
+
+-- Appendix Example
+CREATE OR REPLACE PUMP "PAGE_LOAD_EXP_AVERAGE_PUMP" AS
+INSERT INTO "DESTINATION_SQL_STREAM" (MetricType, EventTimestamp, UnitValueInt)
+SELECT 'load_exp_average', EventTimestamp, w_avg FROM (
+    SELECT STREAM 
+        EXP_AVG(weblogs."load_time", INTERVAL '10' SECOND) over minute_window as w_avg,
+        EventTimestamp
+    FROM "WASA_001" weblogs
+    WHERE weblogs."load_time" IS NOT NULL
+    WINDOW minute_window AS (
+            RANGE INTERVAL '1' MINUTE PRECEING 
+    ));
+
+
 --"Top" Page Views (group_rank?)
 CREATE OR REPLACE PUMP "PAGEVIEWS_PUMP" AS
 INSERT INTO "DESTINATION_SQL_STREAM" ( MetricType, EventTimestamp, MetricItem, UnitValueInt)
